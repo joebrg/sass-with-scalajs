@@ -24,6 +24,8 @@ object Build extends sbt.Build {
     * an internal javascript project to stop sbt from compiling that it cannot find the js project
     * on the top level.
     *
+    * The project base directory needs to contain a subproject dir called "js".
+    *
     * @param project Asset project skeleton
     * @param configureJsProject Opportunity to configure the javascript project.
     * @return asset project and javascript project. You should ignore the javascript project.
