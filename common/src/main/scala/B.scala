@@ -1,0 +1,3 @@
+package common
+
+object B
