@@ -1,18 +1,18 @@
-import com.typesafe.sbt.web.SbtWeb.autoImport._
 import com.typesafe.sbt.web.SbtWeb
+import com.typesafe.sbt.web.SbtWeb.autoImport._
 import org.scalajs.sbtplugin.ScalaJSPlugin
-import org.scalajs.sbtplugin.ScalaJSPlugin.AutoImport._
-import sbt.Keys._
-import sbt._
-import sbt.Project.projectToRef
-import playscalajs.{PlayScalaJS, ScalaJSPlay}
 import playscalajs.PlayScalaJS.autoImport._
+import playscalajs.{PlayScalaJS, ScalaJSPlay}
+import sbt.Keys._
+import sbt.Project.projectToRef
+import sbt._
 
 object Build extends sbt.Build {
   lazy val root =
     Project(id = "root", base = file("."))
       .aggregate(app1, app2)
 
+  /** Shared javascript code */
   lazy val common =
     Project(id = "common", base = file("common"))
       .enablePlugins(ScalaJSPlugin)
@@ -20,40 +20,44 @@ object Build extends sbt.Build {
         scalaVersion := "2.11.8"
       )
 
-  lazy val app1 = {
-    Project(id = "app1", base = file("app1"))
-      .enablePlugins(SbtWeb, PlayScalaJS)
-      .aggregate(app1Js)
-      .settings(
-        scalaVersion := "2.11.8",
-        scalaJSProjects := Seq(app1Js),
-        pipelineStages := Seq(scalaJSProd)
-      )
+  /** Return a project that is the target of asset generation. Unfortunately, also needs to return
+    * an internal javascript project to stop sbt from compiling that it cannot find the js project
+    * on the top level.
+    *
+    * @param project Asset project skeleton
+    * @param configureJsProject Opportunity to configure the javascript project.
+    * @return asset project and javascript project. You should ignore the javascript project.
+    */
+  def jsApp(project: Project)(configureJsProject: Project => Project): (Project, Project) = {
+    val jsProject =
+      configureJsProject(
+        Project(id = s"${project.id}Js", base = project.base / "js")
+          .enablePlugins(ScalaJSPlugin, ScalaJSPlay))
+
+    val assetProject =
+      project
+        .enablePlugins(SbtWeb, PlayScalaJS)
+        .aggregate(projectToRef(jsProject))
+        .settings(
+          scalaVersion := "2.11.8",
+          scalaJSProjects := Seq(jsProject),
+          pipelineStages := Seq(scalaJSProd)
+        )
+
+    (assetProject, jsProject)
   }
 
-  lazy val app1Js = {
-    Project(id = "app1Js", base = file("app1/js"))
-      .enablePlugins(ScalaJSPlugin, ScalaJSPlay)
+
+  lazy val (app1, app1Js) = jsApp(Project(id = "app1", base = file("app1"))) {
+    _.enablePlugins(ScalaJSPlugin, ScalaJSPlay)
       .dependsOn(common)
       .settings(
         scalaVersion := "2.11.8"
       )
   }
 
-  lazy val app2 = {
-    Project(id = "app2", base = file("app2"))
-      .enablePlugins(SbtWeb, PlayScalaJS)
-      .aggregate(app12s)
-      .settings(
-        scalaVersion := "2.11.8",
-        scalaJSProjects := Seq(app12s),
-        pipelineStages := Seq(scalaJSProd)
-      )
-  }
-
-  lazy val app12s = {
-    Project(id = "app2Js", base = file("app2/js"))
-      .enablePlugins(ScalaJSPlugin, ScalaJSPlay)
+  lazy val (app2, app2Js) = jsApp(Project(id = "app2", base = file("app2"))) {
+    _.enablePlugins(ScalaJSPlugin, ScalaJSPlay)
       .dependsOn(common)
       .settings(
         scalaVersion := "2.11.8"
