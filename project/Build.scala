@@ -4,23 +4,25 @@ import org.scalajs.sbtplugin.ScalaJSPlugin
 import org.scalajs.sbtplugin.ScalaJSPlugin.AutoImport._
 import sbt.Keys._
 import sbt._
+import sbt.Project.projectToRef
+import playscalajs.{PlayScalaJS, ScalaJSPlay}
+import playscalajs.PlayScalaJS.autoImport._
 
 object Build extends sbt.Build {
-  lazy val root = {
-    Project(id = "root", base = file("js"))
+  lazy val js = {
+    Project(id = "js", base = file("js"))
       .aggregate(jsApp)
-      .enablePlugins(SbtWeb)
+      .enablePlugins(SbtWeb, PlayScalaJS)
       .settings(
         scalaVersion := "2.11.8",
-        resourceGenerators in Assets <+= Def.task[Seq[File]] {
-          Seq[File]((fastOptJS in Compile in jsApp).value.data)
-        }
+        scalaJSProjects := Seq(jsApp),
+        pipelineStages := Seq(scalaJSProd)
       )
   }
 
   lazy val jsApp = {
     Project(id = "jsApp", base = file("jsApp"))
-      .enablePlugins(ScalaJSPlugin)
+      .enablePlugins(ScalaJSPlugin, ScalaJSPlay)
       .settings(
         scalaVersion := "2.11.8"
       )
