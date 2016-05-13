@@ -51,16 +51,14 @@ object Build extends sbt.Build {
 
 
   lazy val (app1, app1Js) = jsApp(Project(id = "app1", base = file("app1"))) {
-    _.enablePlugins(ScalaJSPlugin, ScalaJSPlay)
-      .dependsOn(common)
+    _.dependsOn(common)
       .settings(
         scalaVersion := "2.11.8"
       )
   }
 
   lazy val (app2, app2Js) = jsApp(Project(id = "app2", base = file("app2"))) {
-    _.enablePlugins(ScalaJSPlugin, ScalaJSPlay)
-      .dependsOn(common)
+    _.dependsOn(common)
       .settings(
         scalaVersion := "2.11.8"
       )
