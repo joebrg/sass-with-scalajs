@@ -1,3 +1,4 @@
+import com.typesafe.sbt.web.Import.WebKeys._
 import com.typesafe.sbt.web.SbtWeb
 import com.typesafe.sbt.web.SbtWeb.autoImport._
 import org.scalajs.sbtplugin.ScalaJSPlugin
@@ -13,14 +14,6 @@ object Build extends sbt.Build {
     Project(id = "root", base = file("."))
       .aggregate(app1, app2)
 
-  /** Shared javascript code */
-  lazy val common =
-    Project(id = "common", base = file("common"))
-      .enablePlugins(ScalaJSPlugin)
-      .settings(
-        scalaVersion := "2.11.8"
-      )
-
   /** Return a project that is the target of asset generation. Unfortunately, also needs to return
     * an internal javascript project to stop sbt from compiling that it cannot find the js project
     * on the top level.
@@ -31,13 +24,16 @@ object Build extends sbt.Build {
     * @param configureJsProject Opportunity to configure the javascript project.
     * @return asset project and javascript project. You should ignore the javascript project.
     */
-  def jsApp(project: Project)(configureJsProject: Project => Project): (Project, Project) = {
+  def jsProject(project: Project)(configureJsProject: Project => Project): (Project, Project) = {
     val jsProject =
       configureJsProject(
         Project(
           id = s"${project.id}Js", base = project.base / "js")
           .enablePlugins(ScalaJSPlugin, ScalaJSPlay)
-          .settings(emitSourceMaps in fastOptJS := false))
+          .settings(
+            emitSourceMaps := false,
+            moduleName := "app"
+          ))
 
     val assetProject =
       project
@@ -46,24 +42,40 @@ object Build extends sbt.Build {
         .settings(
           scalaVersion := "2.11.8",
           scalaJSProjects := Seq(jsProject),
-          pipelineStages := Seq(scalaJSProd)
+          pipelineStages := Seq(scalaJSProd),
+          persistLauncher in Compile := false,
+          importDirectly := true
         )
 
     (assetProject, jsProject)
   }
 
+  def jsApp(project: Project)(configureJsProject: Project => Project): (Project, Project) = {
+    val (assets, javascript) = jsProject(project)(configureJsProject)
+    (assets
+      .dependsOn(common),
+      javascript
+        .dependsOn(commonJs)
+        .settings(persistLauncher in Compile := true))
+  }
+
+
+  /** Shared javascript code */
+  lazy val (common, commonJs) = jsProject(Project(id = "common", base = file("common"))) {
+    _.settings(
+      scalaVersion := "2.11.8"
+    )
+  }
 
   lazy val (app1, app1Js) = jsApp(Project(id = "app1", base = file("app1"))) {
-    _.dependsOn(common)
-      .settings(
-        scalaVersion := "2.11.8"
-      )
+    _.settings(
+      scalaVersion := "2.11.8"
+    )
   }
 
   lazy val (app2, app2Js) = jsApp(Project(id = "app2", base = file("app2"))) {
-    _.dependsOn(common)
-      .settings(
-        scalaVersion := "2.11.8"
-      )
+    _.settings(
+      scalaVersion := "2.11.8"
+    )
   }
 }
