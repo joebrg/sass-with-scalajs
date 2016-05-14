@@ -1,6 +1,7 @@
 import com.typesafe.sbt.web.SbtWeb
 import com.typesafe.sbt.web.SbtWeb.autoImport._
 import org.scalajs.sbtplugin.ScalaJSPlugin
+import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport._
 import playscalajs.PlayScalaJS.autoImport._
 import playscalajs.{PlayScalaJS, ScalaJSPlay}
 import sbt.Keys._
@@ -33,8 +34,10 @@ object Build extends sbt.Build {
   def jsApp(project: Project)(configureJsProject: Project => Project): (Project, Project) = {
     val jsProject =
       configureJsProject(
-        Project(id = s"${project.id}Js", base = project.base / "js")
-          .enablePlugins(ScalaJSPlugin, ScalaJSPlay))
+        Project(
+          id = s"${project.id}Js", base = project.base / "js")
+          .enablePlugins(ScalaJSPlugin, ScalaJSPlay)
+          .settings(emitSourceMaps in fastOptJS := false))
 
     val assetProject =
       project
