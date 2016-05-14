@@ -1,3 +1,5 @@
 package common
 
-object B
+object B {
+  def hello(msg: String): String = s"Hello $msg"
+}

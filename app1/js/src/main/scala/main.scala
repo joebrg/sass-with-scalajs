@@ -4,6 +4,6 @@ import scala.scalajs.js.annotation.JSExport
 @JSExport("RtlMain")
 object Main extends js.JSApp {
   def main(): Unit = {
-    println("hello")
+    println(s"hello ${A.hello("1")}")
   }
 }
