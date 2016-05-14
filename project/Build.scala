@@ -42,7 +42,7 @@ object Build extends sbt.Build {
         .settings(
           scalaVersion := "2.11.8",
           scalaJSProjects := Seq(jsProject),
-          pipelineStages := Seq(scalaJSProd),
+          pipelineStages in Assets := Seq(scalaJSProd),
           persistLauncher in Compile := false,
           importDirectly := true
         )
