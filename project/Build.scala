@@ -7,12 +7,17 @@ import playscalajs.PlayScalaJS.autoImport._
 import playscalajs.{PlayScalaJS, ScalaJSPlay}
 import sbt.Keys._
 import sbt.Project.projectToRef
-import sbt._
+import sbt.{PathFinder, _}
 
 object Build extends sbt.Build {
   lazy val root =
     Project(id = "root", base = file("."))
       .aggregate(app1, app2)
+
+  def copyDirTask(sourceDir: TaskKey[File], targetDir: SettingKey[File]) = Def.task {
+    IO.copyDirectory(sourceDir.value, targetDir.value, preserveLastModified = true)
+    PathFinder(sourceDir.value).***.get
+  }
 
   /** Return a project that is the target of asset generation. Unfortunately, also needs to return
     * an internal javascript project to stop sbt from compiling that it cannot find the js project
@@ -24,12 +29,13 @@ object Build extends sbt.Build {
     * @param configureJsProject Opportunity to configure the javascript project.
     * @return asset project and javascript project. You should ignore the javascript project.
     */
-  def jsProject(project: Project)(configureJsProject: Project => Project): (Project, Project) = {
+  def jsApp(project: Project)(configureJsProject: Project => Project): (Project, Project) = {
     val jsProject =
       configureJsProject(
         Project(
           id = s"${project.id}Js", base = project.base / "js")
           .enablePlugins(ScalaJSPlugin, ScalaJSPlay)
+          .dependsOn(common)
           .settings(
             emitSourceMaps := false,
             moduleName := "app"
@@ -43,29 +49,23 @@ object Build extends sbt.Build {
           scalaVersion := "2.11.8",
           scalaJSProjects := Seq(jsProject),
           pipelineStages in Assets := Seq(scalaJSProd),
-          persistLauncher in Compile := false,
+          resourceGenerators in Assets <+=
+            copyDirTask(assets in Assets in common, WebKeys.public in Assets),
+          persistLauncher in Compile := true,
           importDirectly := true
         )
 
     (assetProject, jsProject)
   }
 
-  def jsApp(project: Project)(configureJsProject: Project => Project): (Project, Project) = {
-    val (assets, javascript) = jsProject(project)(configureJsProject)
-    (assets
-      .dependsOn(common),
-      javascript
-        .dependsOn(commonJs)
-        .settings(persistLauncher in Compile := true))
-  }
-
-
   /** Shared javascript code */
-  lazy val (common, commonJs) = jsProject(Project(id = "common", base = file("common"))) {
-    _.settings(
-      scalaVersion := "2.11.8"
-    )
-  }
+  lazy val common =
+    Project(id = "common", base = file("common"))
+      .enablePlugins(ScalaJSPlugin, SbtWeb)
+      .settings(
+        scalaVersion := "2.11.8",
+        persistLauncher in Compile := false
+      )
 
   lazy val (app1, app1Js) = jsApp(Project(id = "app1", base = file("app1"))) {
     _.settings(
